@@ -32,7 +32,7 @@ trapinithart(void)
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
-//
+// 目前的页表是kernel table
 void
 usertrap(void)
 {
@@ -58,13 +58,14 @@ usertrap(void)
 
     // sepc points to the ecall instruction,
     // but we want to return to the next instruction.
+    // 看起来地址占4*8 = 32 bit
     p->trapframe->epc += 4;
 
     // an interrupt will change sstatus &c registers,
     // so don't enable until done with those registers.
-    intr_on();
+    intr_on(); //设置SIE bit 为1，表明可以接受设备中断
 
-    syscall();
+    syscall(); //调用系统调用
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
@@ -80,6 +81,7 @@ usertrap(void)
   if(which_dev == 2)
     yield();
 
+  // return
   usertrapret();
 }
 
@@ -97,13 +99,16 @@ usertrapret(void)
   intr_off();
 
   // send syscalls, interrupts, and exceptions to trampoline.S
+  // changing stvec to refer to uservec
+  // uservec - trampoline，kernel内存中直接映射的物理地址之差值
   w_stvec(TRAMPOLINE + (uservec - trampoline));
 
+  //在一般的环境里, C语言取到的是虚拟地址. 
   // set up trapframe values that uservec will need when
   // the process next re-enters the kernel.
   p->trapframe->kernel_satp = r_satp();         // kernel page table
   p->trapframe->kernel_sp = p->kstack + PGSIZE; // process's kernel stack
-  p->trapframe->kernel_trap = (uint64)usertrap;
+  p->trapframe->kernel_trap = (uint64)usertrap; // usertrap函数指针的地址
   p->trapframe->kernel_hartid = r_tp();         // hartid for cpuid()
 
   // set up the registers that trampoline.S's sret will use
@@ -111,11 +116,14 @@ usertrapret(void)
   
   // set S Previous Privilege mode to User.
   unsigned long x = r_sstatus();
+  //SPP bit为0表示下次执行sret的时候，我们想要返回user mode而不是supervisor mode。这个寄存器的SPIE bit位控制了
+  //在执行完sret之后，是否打开中断。因为我们在返回到用户空间之后，我们的确希望打开中断，所以这里将SPIE bit位设置为1
   x &= ~SSTATUS_SPP; // clear SPP to 0 for user mode
   x |= SSTATUS_SPIE; // enable interrupts in user mode
   w_sstatus(x);
 
   // set S Exception Program Counter to the saved user pc.
+  // 用户寄存器必须用汇编代码读写，而控制寄存器有C语言接口
   w_sepc(p->trapframe->epc);
 
   // tell trampoline.S the user page table to switch to.
@@ -124,6 +132,7 @@ usertrapret(void)
   // jump to trampoline.S at the top of memory, which 
   // switches to the user page table, restores user registers,
   // and switches to user mode with sret.
+  // fn == 虚拟地址，userret代码开始的位置
   uint64 fn = TRAMPOLINE + (userret - trampoline);
   ((void (*)(uint64,uint64))fn)(TRAPFRAME, satp);
 }

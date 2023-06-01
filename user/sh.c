@@ -148,6 +148,9 @@ main(void)
   int fd;
 
   // Ensure that three file descriptors are open.
+  //保证标准的输入，输出，和报错设备都是console
+  //我们只使用了同一个console，但获取了三个指向同一个console的文件描述符
+  //并且三个文件描述符相互独立！
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
       close(fd);
@@ -165,7 +168,7 @@ main(void)
       continue;
     }
     if(fork1() == 0)
-      runcmd(parsecmd(buf));
+      runcmd(parsecmd(buf)); //parsecmd解析命令
     wait(0);
   }
   exit(0);
@@ -175,7 +178,7 @@ void
 panic(char *s)
 {
   fprintf(2, "%s\n", s);
-  exit(1);
+  exit(1);  //停止进程，1意味着运行失败
 }
 
 int

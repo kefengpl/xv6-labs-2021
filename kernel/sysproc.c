@@ -80,7 +80,39 @@ sys_sleep(void)
 int
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+  struct proc* p = myproc(); //get this process
+  pagetable_t pagetable = p->pagetable;
+
+  uint64 va, dstva;
+  int npages;
+  if(argaddr(0, &va)<0 || argint(1, &npages)<0 || argaddr(2, &dstva)<0){
+    return -1;
+  }
+
+  int MAX_PAGES = 64;
+  if(npages > MAX_PAGES){
+    panic("Only support less than or equal to 64 npages.");
+  }
+
+  va = PGROUNDDOWN(va);
+  uint64 bitmask = 0;
+  uint64 left_i = 1;
+  pte_t* the_pte;
+  for(int i=0; i<npages; i++){
+    left_i = 1 << i;
+    if((the_pte = walk(pagetable, va, 0)) == 0){
+      return -1;
+    }
+    if((*the_pte & PTE_A)){
+      bitmask = bitmask | left_i;
+      *the_pte = *the_pte & ~PTE_A;
+    }
+    va += PGSIZE;
+  }
+  //错误点在于：(char*)&bitmask这个参数传递有问题
+  if(copyout(pagetable, dstva, (char*)&bitmask, sizeof(the_pte)) < 0){
+    return -1;
+  }
   return 0;
 }
 #endif

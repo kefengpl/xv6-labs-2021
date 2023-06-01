@@ -311,11 +311,11 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
-    flags = PTE_FLAGS(*pte);
+    flags = PTE_FLAGS(*pte); //取其后10个比特位
     if((mem = kalloc()) == 0)
       goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
+    memmove(mem, (char*)pa, PGSIZE); //拷贝物理内存
+    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){ //创建相应的页表
       kfree(mem);
       goto err;
     }
@@ -356,6 +356,11 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
+    /*
+    虚拟地址中连续的内存页在物理地址中可以是连续的，
+    也可以是不连续的，取决于操作系统的页表映射策略和物理内存的布局。
+    这就是为什么数据需要分页转移的原因
+    */
     memmove((void *)(pa0 + (dstva - va0)), src, n);
 
     len -= n;
@@ -431,4 +436,51 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+void _pteprint(int idx ,pte_t pte, uint64 pa, int level){
+  if(level == 2){
+    printf(" ..%d: pte %p pa %p\n",idx, pte, pa);
+    return;
+  }
+  if(level == 1){
+    printf(" .. ..%d: pte %p pa %p\n",idx , pte, pa);
+    return;
+  }
+  if(level == 0){
+    printf(" .. .. ..%d: pte %p pa %p\n",idx , pte, pa);
+    return;
+  }
+  panic("level wrong, level is not 2/1/0");
+}
+
+void _vmprint(pagetable_t pagetable,int level){
+  if(level < 0){
+    return;
+  }
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      //说明该PTE有效且指向下一页表
+      uint64 child = PTE2PA(pte);
+      _pteprint(i, pte, child, level);
+      _vmprint((pagetable_t)child, level-1);
+    }else{
+      if(pte & PTE_V){
+        //说明是叶子结点
+        _pteprint(i, pte, PTE2PA(pte), level);
+      }
+    }
+  }
+  return;
+}
+
+// Recursively print valid page-table pages.
+void
+vmprint(pagetable_t pagetable)
+{
+  printf("page table %p\n",pagetable);
+  int init_level = 2;
+  _vmprint(pagetable, init_level);
+  return;
 }

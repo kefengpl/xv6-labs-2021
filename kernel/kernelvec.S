@@ -9,6 +9,7 @@
 .align 4
 kernelvec:
         // make room to save registers.
+        // 一个cpu在内存中的栈空间 (stack0)
         addi sp, sp, -256
 
         // save the registers.

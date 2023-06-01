@@ -43,6 +43,7 @@ freerange(void *pa_start, void *pa_end)
 // which normally should have been returned by a
 // call to kalloc().  (The exception is when
 // initializing the allocator; see kinit above.)
+// 返回的是物理地址
 void
 kfree(void *pa)
 {
@@ -55,7 +56,7 @@ kfree(void *pa)
   memset(pa, 1, PGSIZE);
 
   r = (struct run*)pa;
-
+  //释放过程类似于头插法
   acquire(&kmem.lock);
   r->next = kmem.freelist;
   kmem.freelist = r;
