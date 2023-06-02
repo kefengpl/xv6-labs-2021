@@ -101,8 +101,14 @@ struct proc {
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
   struct trapframe *trapframe; // data page for trampoline.S
+  struct trapframe *old_trapframe; //pa for old_trapframe
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  uint64 n_ticks;              //tick interval
+  uint64 alarm_handler;        //function
+  uint64 tick_count;           //how many ticks have passed since the last call?
+  char in_handler;
 };

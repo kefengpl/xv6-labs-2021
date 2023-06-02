@@ -75,10 +75,36 @@ usertrap(void)
 
   if(p->killed)
     exit(-1);
-
+  
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
-    yield();
+  if(which_dev == 2) {
+    struct proc *p = myproc();
+      //深刻教训：本题不需要获得锁LOCK！！
+    if (p->alarm_handler == 0 && p->n_ticks == 0) {
+      yield();
+    } else {
+      if (p->tick_count == p->n_ticks && p->in_handler != 1) {
+        p->tick_count = 0;
+        
+        /*struct trapframe * old_trapframe;
+        if((old_trapframe = (struct trapframe *)kalloc()) == 0){
+          panic("kalloc other trapframe failed.");
+        }
+        copyin(p->pagetable, (char*)old_trapframe, TRAPFRAME, PGSIZE);*/
+        *p->old_trapframe = *p->trapframe;
+
+        p->in_handler = 1;
+        p->trapframe->epc = p->alarm_handler; //处理方法：需要让handler跳到用户空间！
+      } else {
+        if (p->in_handler != 1) {
+          p->tick_count += 1;
+        }
+      }
+      //深刻教训：每个分支都需要有yield！
+      yield();
+      //release(&p->lock);
+    }    
+  }
 
   usertrapret();
 }
@@ -218,3 +244,29 @@ devintr()
   }
 }
 
+uint64 sys_sigalarm(void) 
+{
+  int n_ticks;
+  uint64 alarm_handler;
+  //深刻教训：必须要有出错判断！！
+  //深刻教训：本题不需要获得锁LOCK！！
+  if (argint(0, &n_ticks) < 0) {
+    return -1;
+  }
+  if (argaddr(1, &alarm_handler) < 0) {
+    return -1;
+  }
+  struct proc *p = myproc();
+  p->alarm_handler = alarm_handler;
+  p->n_ticks = n_ticks;
+  return 0;
+}
+
+uint64 sys_sigreturn(void) 
+{
+  struct proc *p = myproc();
+  //深刻教训：本题不需要获得锁LOCK！！
+  *p->trapframe = *p->old_trapframe;
+  p->in_handler = 0;
+  return 0;
+}
