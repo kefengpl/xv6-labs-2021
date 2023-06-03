@@ -2818,7 +2818,7 @@ main(int argc, char *argv[])
     void (*f)(char *);
     char *s;
   } tests[] = {
-    /*{MAXVAplus, "MAXVAplus"},
+    {MAXVAplus, "MAXVAplus"},
     {manywrites, "manywrites"},
     {execout, "execout"},
     {copyin, "copyin"},
@@ -2831,10 +2831,10 @@ main(int argc, char *argv[])
     {truncate2, "truncate2"},
     {truncate3, "truncate3"},
     {reparent2, "reparent2"},
-    {pgbug, "pgbug" },*/
+    {pgbug, "pgbug" },
     {sbrkbugs, "sbrkbugs" },
     // {badwrite, "badwrite" },
-    /*{badarg, "badarg" },
+    {badarg, "badarg" },
     {reparent, "reparent" },
     {twochildren, "twochildren"},
     {forkfork, "forkfork"},
@@ -2881,7 +2881,7 @@ main(int argc, char *argv[])
     {iref, "iref"},
     {forktest, "forktest"},
     {bigdir, "bigdir"}, // slow
-    { 0, 0},*/
+    { 0, 0},
   };
 
   if(continuous){

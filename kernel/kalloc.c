@@ -56,9 +56,9 @@ kfree(void *pa)
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
 
-  //acquire(&kmem.lock);
+  acquire(&kmem.lock);
   page_ref_count[(uint64)pa/PGSIZE]--;
-  //release(&kmem.lock);
+  release(&kmem.lock);
 
   if (page_ref_count[(uint64)pa/PGSIZE] == 0) {
     // Fill with junk to catch dangling refs.

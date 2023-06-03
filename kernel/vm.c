@@ -324,7 +324,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if(mappages(new, i, PGSIZE, pa, flags) != 0){
       goto err;
     }
-    //page_ref_count[pa/PGSIZE] += 1;
     increase1(pa);
   }
   return 0;
