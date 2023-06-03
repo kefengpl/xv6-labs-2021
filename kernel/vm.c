@@ -15,6 +15,8 @@ extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
 
+extern int page_ref_count[];
+
 // Make a direct-map page table for the kernel.
 pagetable_t
 kvmmake(void)
@@ -149,8 +151,10 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     if((pte = walk(pagetable, a, 1)) == 0)
       return -1;
     if(*pte & PTE_V)
-      panic("mappages: remap");
+      panic("mappages: remmap");
+      
     *pte = PA2PTE(pa) | perm | PTE_V;
+
     if(a == last)
       break;
     a += PGSIZE;
@@ -303,28 +307,31 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
+    if (i >= MAXVA) {
+      return -1; 
+    }
+
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+    *pte = (*pte & ~PTE_W) | PTE_C;
+    //禁止父进程、子进程的写权限，并标记为COW PTE
+    flags = PTE_FLAGS(*pte); 
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){
       goto err;
     }
+    //page_ref_count[pa/PGSIZE] += 1;
+    increase1(pa);
   }
   return 0;
 
- err:
-  uvmunmap(new, 0, i / PGSIZE, 1);
-  return -1;
+  err:
+    uvmunmap(new, 0, i / PGSIZE, 0);
+    return -1;
 }
 
 // mark a PTE invalid for user access.
@@ -347,12 +354,36 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
+  char* mem;
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;
+
+    pte_t* pte = walk(pagetable, dstva, 0);
+    if (pte == 0) {
+      return -1;
+    }
+
+    if (!(*pte & PTE_U) | !(*pte & PTE_V)) {
+      return -1;
+    }
+    if ((*pte & PTE_C) != 0) {
+      if (page_ref_count[pa0/PGSIZE] == 1) {
+        *pte = ((*pte) | PTE_W) & ~PTE_C;
+      } else {
+          if((mem = kalloc()) == 0){
+            return -1;
+          }
+          *pte = (PA2PTE((uint64)mem) | PTE_U | PTE_R | PTE_X | PTE_W | PTE_V) & ~PTE_C;
+          memmove(mem, (char*)pa0, PGSIZE);
+          kfree((void*)pa0); 
+          pa0 = (uint64)mem;
+      }
+    }
+
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;

@@ -10,6 +10,7 @@ struct spinlock tickslock;
 uint ticks;
 
 extern char trampoline[], uservec[], userret[];
+extern int page_ref_count[];
 
 // in kernelvec.S, calls kerneltrap().
 void kernelvec();
@@ -27,6 +28,43 @@ void
 trapinithart(void)
 {
   w_stvec((uint64)kernelvec);
+}
+
+int
+cow_handler(struct proc* p, uint64 stval) {
+    char *mem;
+    uint64 va = stval;
+    if (va >= MAXVA) {
+      return -1;
+    }
+    pte_t* pte = walk(p->pagetable, va, 0);
+    uint64 pa = PTE2PA(*pte); 
+
+    if (pte == 0) {
+      return -1;
+    }
+
+    if (!(*pte & PTE_U) | !(*pte & PTE_V)) {
+      return -1;
+    }
+
+    if ((*pte & PTE_C) != 0) {
+      if (page_ref_count[pa/PGSIZE] == 1) {
+        *pte = ((*pte) | PTE_W) & ~PTE_C;
+        return 0;
+      }
+
+      if((mem = kalloc()) == 0){
+        return -1;
+      }
+
+      memmove(mem, (char*)pa, PGSIZE);
+      //HUGE BUG：mem之前一定要加PA2PTE！否则位数是对不齐的！
+      *pte = (PA2PTE((uint64)mem) | PTE_U | PTE_R | PTE_X | PTE_W | PTE_V) & ~PTE_C;
+      kfree((void*)pa);  //这里的技巧性十分强！需要把释放页放在kfree，就像智能指针一样。
+      return 0;     
+    } 
+    return -1;
 }
 
 //
@@ -65,11 +103,15 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if(r_scause() == 15){
+    if (cow_handler(p, r_stval()) < 0) {
+      p->killed = 1;
+    }
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
-    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+    printf("            sepc=%p stval=%p %d\n", r_sepc(), r_stval());
     p->killed = 1;
   }
 
@@ -217,4 +259,3 @@ devintr()
     return 0;
   }
 }
-
