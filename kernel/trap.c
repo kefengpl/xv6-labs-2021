@@ -34,6 +34,7 @@ int
 cow_handler(struct proc* p, uint64 stval) {
     char *mem;
     uint64 va = stval;
+    //一定不要忘记错误检查！否则usertest是过不了的！
     if (va >= MAXVA) {
       return -1;
     }
@@ -44,6 +45,9 @@ cow_handler(struct proc* p, uint64 stval) {
       return -1;
     }
 
+    //一定不要忘记错误检查！否则usertest是过不了的！
+    //注意区分panic和return -1这二者之区别
+    //这里由于失败后是需要p->killed = 1，所以不要panic
     if (!(*pte & PTE_U) | !(*pte & PTE_V)) {
       return -1;
     }

@@ -328,6 +328,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   }
   return 0;
 
+  //这一部分不要丢弃！
   err:
     uvmunmap(new, 0, i / PGSIZE, 0);
     return -1;

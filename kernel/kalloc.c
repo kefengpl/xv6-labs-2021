@@ -14,6 +14,7 @@ void freerange(void *pa_start, void *pa_end);
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
 
+//不要加任何锁！
 int page_ref_count[PHYSTOP/PGSIZE];
 
 struct run {
@@ -25,6 +26,11 @@ struct {
   struct run *freelist;
 } kmem;
 
+/*struct {
+  struct spinlock lock;
+  int count[PHYSTOP/PGSIZE];
+} page_ref_count;*/
+
 void
 kinit()
 {
@@ -32,6 +38,7 @@ kinit()
     page_ref_count[i] = 1;
   }
   initlock(&kmem.lock, "kmem");
+  //initlock(&page_ref_count.lock, "page_ref_count");
   freerange(end, (void*)PHYSTOP);
 }
 
@@ -55,10 +62,8 @@ kfree(void *pa)
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
-
-  acquire(&kmem.lock);
+  //注意：因为很多地方都需要用到kfree，所以这里直接在这里减去引用计数
   page_ref_count[(uint64)pa/PGSIZE]--;
-  release(&kmem.lock);
 
   if (page_ref_count[(uint64)pa/PGSIZE] == 0) {
     // Fill with junk to catch dangling refs.
@@ -96,9 +101,8 @@ kalloc(void)
   return (void*)r;
 }
 
+//实验技巧：page_ref_count的+1封装
 void increase1(uint64 pa) {
-  acquire(&kmem.lock);
   page_ref_count[pa/PGSIZE] += 1;
-  release(&kmem.lock);
   return;
 }
