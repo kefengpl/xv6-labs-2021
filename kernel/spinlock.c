@@ -29,6 +29,8 @@ acquire(struct spinlock *lk)
   //   a5 = 1
   //   s1 = &lk->locked
   //   amoswap.w.aq a5, a5, (s1)
+  // 这一行的意思是直到lk->locked被换出的数值等于0了，才相当于获得了锁
+  // 如果换出的lk->locked数值是1，那说明这个锁还被其它CPU占用，继续自旋(无限循环)
   while(__sync_lock_test_and_set(&lk->locked, 1) != 0)
     ;
 
