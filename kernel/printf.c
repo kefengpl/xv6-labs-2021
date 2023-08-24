@@ -132,3 +132,28 @@ printfinit(void)
   initlock(&pr.lock, "pr");
   pr.locking = 1;
 }
+
+/**
+ * @note 此函数的作用在于发生错误时，能够从栈帧的错误点
+ * @note 向上追溯，自底向上(从小地址到大地址)打印各个函
+ * @note 数栈帧的return address，反映函数调用情况
+ * @note 例如：sum_then_double [call] sum_to，则当sum_to
+ * @note 出现错误时，能够打印出：
+ * @note ①sum_to到sum_then_double的return address
+ * @note ②还能够打印出sum_then_double到main的return address
+*/
+void
+backtrace(void)
+{
+  //一个用户进程的栈大小为PGSIZE = 4096
+  //获得当前函数的frame pointer，它指向栈的顶部(在os中栈顶是数据结构中的“栈底”)
+  uint64 fp = r_fp();
+  //获得这个栈的地址最大值(位于栈所在地址空间的最上方)
+  //注意：栈在该地址空间中是向下增长的
+  uint64 stack_end = PGROUNDUP(fp); 
+  printf("backtrace:");
+  while (fp <= stack_end) {
+    printf("%p\n", *(uint64*)(fp - 8));
+    fp = *(uint64*)(fp - 16);
+  }
+}

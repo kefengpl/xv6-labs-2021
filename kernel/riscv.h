@@ -364,3 +364,15 @@ sfence_vma()
 
 typedef uint64 pte_t;
 typedef uint64 *pagetable_t; // 512 PTEs
+
+/**
+ * @return frame pointer: 被储存在寄存器s0中
+ * 此函数可以把s0的值读取到内存中，存储在x里面
+*/
+static inline uint64
+r_fp()
+{
+  uint64 x;
+  asm volatile("mv %0, s0" : "=r" (x) );
+  return x;
+}
