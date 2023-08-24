@@ -288,6 +288,8 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+  // lab2：将父进程的tracemask拷贝到子进程中
+  np->tracemask = p->tracemask;
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -653,4 +655,17 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+/**
+ * @return 活跃的(NOT UNUSED)进程数目
+*/
+uint64
+getProcNum() 
+{
+  uint64 proc_cnt = 0;
+  for (int i = 0; i < NPROC; ++i) {
+    if (proc[i].state != UNUSED) ++proc_cnt;
+  }
+  return proc_cnt;
 }

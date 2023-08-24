@@ -54,6 +54,10 @@ kfree(void *pa)
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
 
+  //! \note 可以这样认为：struct run *r例如占用4B，而(struct run*)pa 可能是4096B
+  //! \note 此时可能相当于 r = (struct run*) malloc(4096)，r会认为pa开头的4B才是
+  //! \note 有效地址，这pa开头的4B中会存储指针struct run *next本身所占用的空间
+  //! \note 该指针在下面的kalloc中改变头结点后会自动被junk内容填满，即该next指针消失
   r = (struct run*)pa;
 
   acquire(&kmem.lock);
@@ -79,4 +83,21 @@ kalloc(void)
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
+}
+
+/**
+ * @note 获取空闲未分配的内存
+ * @return 剩余内存(计算方法：空闲页面 * 4096)
+*/
+uint64 
+getFreeMemo()
+{
+  struct run *r = kmem.freelist;
+  uint64 free_pages = 0;
+  //由于是只读，不修改freelist表的结构，因此无需加锁
+  while (r) {
+    ++free_pages;
+    r = r->next;
+  }
+  return free_pages * PGSIZE;
 }

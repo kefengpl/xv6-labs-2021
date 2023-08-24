@@ -104,7 +104,13 @@ extern uint64 sys_unlink(void);
 extern uint64 sys_wait(void);
 extern uint64 sys_write(void);
 extern uint64 sys_uptime(void);
+extern uint64 sys_trace(void); // 实验2添加的函数声明
+extern uint64 sys_sysinfo(void); // 实验2添加的函数声明
 
+/**
+ * @note 这是一个函数指针类型的数组，函数返回值类型是uint64，参数是(void)即没有参数
+ * [SYS_fork] sys_fork的语法类似于给索引SYS_fork的位置赋值为sys_fork
+*/
 static uint64 (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
 [SYS_exit]    sys_exit,
@@ -127,6 +133,35 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_trace]   sys_trace,
+[SYS_sysinfo] sys_sysinfo,
+};
+
+//! \note 需要将序号和系统调用的名称对应起来 
+//! \note 反映出序号和系统调用名称间的映射关系
+static char* syscall_map[] = {
+    [SYS_fork]    "fork",
+    [SYS_exit]    "exit",
+    [SYS_wait]    "wait",
+    [SYS_pipe]    "pipe",
+    [SYS_read]    "read",
+    [SYS_kill]    "kill",
+    [SYS_exec]    "exec",
+    [SYS_fstat]   "fstat",
+    [SYS_chdir]   "chdir",
+    [SYS_dup]     "dup",
+    [SYS_getpid]  "getpid",
+    [SYS_sbrk]    "sbrk",
+    [SYS_sleep]   "sleep",
+    [SYS_uptime]  "uptime",
+    [SYS_open]    "open",
+    [SYS_write]   "write",
+    [SYS_mknod]   "mknod",
+    [SYS_unlink]  "unlink",
+    [SYS_link]    "link",
+    [SYS_mkdir]   "mkdir",
+    [SYS_close]   "close",
+    [SYS_trace]   "trace",
 };
 
 void
@@ -138,6 +173,13 @@ syscall(void)
   num = p->trapframe->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     p->trapframe->a0 = syscalls[num]();
+    // 在系统调用返回后逐个和mask比对，考察究竟追踪了哪些系统调用
+    // 如果追踪了某系统调用，就输出相关信息即可
+    // 如果我们恰好追踪了num的这一系统调用，就输出相关信息
+    if (1 << num & p->tracemask) {
+      //process id + syscall name + return value
+      printf("%d: syscall %s -> %d\n", p->pid, syscall_map[num], p->trapframe->a0);
+    }
   } else {
     printf("%d %s: unknown sys call %d\n",
             p->pid, p->name, num);
