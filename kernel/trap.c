@@ -77,7 +77,7 @@ usertrap(void)
 
   if(p->killed)
     exit(-1);
-
+  
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2) {
     // 如果p正在处于可以alarm的状态，才执行操作，否则直接让渡CPU使用权
@@ -243,3 +243,29 @@ devintr()
   }
 }
 
+uint64 sys_sigalarm(void) 
+{
+  int n_ticks;
+  uint64 alarm_handler;
+  //深刻教训：必须要有出错判断！！
+  //深刻教训：本题不需要获得锁LOCK！！
+  if (argint(0, &n_ticks) < 0) {
+    return -1;
+  }
+  if (argaddr(1, &alarm_handler) < 0) {
+    return -1;
+  }
+  struct proc *p = myproc();
+  p->alarm_handler = alarm_handler;
+  p->n_ticks = n_ticks;
+  return 0;
+}
+
+uint64 sys_sigreturn(void) 
+{
+  struct proc *p = myproc();
+  //深刻教训：本题不需要获得锁LOCK！！
+  *p->trapframe = *p->old_trapframe;
+  p->in_handler = 0;
+  return 0;
+}

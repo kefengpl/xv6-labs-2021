@@ -37,4 +37,8 @@ entry("sbrk");
 entry("sleep");
 entry("uptime");
 entry("sigalarm");
+<<<<<<< HEAD
 entry("sigreturn");
+=======
+entry("sigreturn");
+>>>>>>> 2badc23d7ebd4f43062cce51b62ed204d9746f59

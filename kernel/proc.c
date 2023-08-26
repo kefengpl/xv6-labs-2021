@@ -154,6 +154,12 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+  
+  //initialize elem about alarm.
+  p->tick_count = 0;
+  p->alarm_handler = 0;
+  p->n_ticks = 0;
+  p->in_handler = 0;
 
   return p;
 }
@@ -166,10 +172,16 @@ freeproc(struct proc *p)
 {
   if(p->trapframe)
     kfree((void*)p->trapframe);
+<<<<<<< HEAD
   //! \bug 注意分配了trapframe_backup一定要释放该page，否则会报错
   if(p->trapframe_backup)
     kfree((void*)p->trapframe_backup);
+=======
+  if(p->old_trapframe)
+    kfree((void*)p->old_trapframe);
+>>>>>>> 2badc23d7ebd4f43062cce51b62ed204d9746f59
   p->trapframe = 0;
+  p->old_trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;

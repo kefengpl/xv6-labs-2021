@@ -133,6 +133,7 @@ printfinit(void)
   pr.locking = 1;
 }
 
+<<<<<<< HEAD
 /**
  * @note 此函数的作用在于发生错误时，能够从栈帧的错误点
  * @note 向上追溯，自底向上(从小地址到大地址)打印各个函
@@ -160,3 +161,18 @@ backtrace(void)
     fp = *(uint64*)(fp - 16);
   }
 }
+=======
+void 
+backtrace(void)
+{
+  uint64 cur_fp = r_fp();
+  uint64 stack_bottom = PGROUNDUP(cur_fp);
+  printf("backtrace\n");
+
+  while (cur_fp < stack_bottom) {
+    printf("%p\n",*(uint64 *)(cur_fp-8));
+    cur_fp = *(uint64 *)(cur_fp-16);
+  }
+  return;
+}
+>>>>>>> 2badc23d7ebd4f43062cce51b62ed204d9746f59
