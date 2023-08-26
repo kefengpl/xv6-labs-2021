@@ -151,8 +151,11 @@ backtrace(void)
   //获得这个栈的地址最大值(位于栈所在地址空间的最上方)
   //注意：栈在该地址空间中是向下增长的
   uint64 stack_end = PGROUNDUP(fp); 
-  printf("backtrace:");
-  while (fp <= stack_end) {
+  printf("backtrace:\n");
+  //! \bug 此处fp <= stack_end 会多一次循环：即fp == stack_end的情况
+  //! \bug scause = 0x000000000000000d，会导致painc错误，或许不需要获得main的调用情况
+  //! \bug 错误的返回地址 0x0000000000000012, 18
+  while (fp < stack_end) {
     printf("%p\n", *(uint64*)(fp - 8));
     fp = *(uint64*)(fp - 16);
   }

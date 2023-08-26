@@ -101,8 +101,15 @@ struct proc {
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
   struct trapframe *trapframe; // data page for trampoline.S
+  struct trapframe *trapframe_backup; // 用于储存alarm handler调用时的寄存器状态[备份该进程的寄存器]
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  int has_handler;             // 由于handler函数指针地址可能是0，因此需要用has_handler判断该proc是否有handler，0代表没有，1代表有
+  uint64 handler;              // 用于sigalarm处理的函数指针地址，存放的是该线程pagetable页表下的虚拟地址
+  int alarm_interval;          // alarm_interval次tick后，该进程调用handler，如果是0，表明没有alarm calls
+  int ticks_count;             // 用于记录从上次调用handler后发生了多少次tick
+  int in_handler;              // 该进程是否在执行handler？如果在执行它，就不能重复调用
 };

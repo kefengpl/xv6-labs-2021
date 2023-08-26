@@ -45,6 +45,8 @@ usertrap(void)
   // since we're now in the kernel.
   w_stvec((uint64)kernelvec);
 
+  // 说明：这里是在内核页表下获得的当前CPU运行进程的地址
+  // 一般都属于“直接映射”寻址
   struct proc *p = myproc();
   
   // save user program counter.
@@ -77,8 +79,31 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2) {
+    // 如果p正在处于可以alarm的状态，才执行操作，否则直接让渡CPU使用权
+    if (p->has_handler) {
+      // 如果tick计数达到规定的次数，就需要调用handler函数进行处理
+      if (++p->ticks_count == p->alarm_interval) {
+        p->ticks_count = 0; // 计数归零
+        //! \note 如果在此处而不是下面的if中执行*p->trapframe_backup = *p->trapframe，则当该进程运行handler时
+        //! \note 会导致trapframe_backup被“已经被handler破坏的trampframe(即该进程首次调用handler时)”覆盖掉，
+        //! \note 则无法在handler结束后恢复原来的命令执行
+
+        //! \note when a process's alarm interval expires, the user process executes the handler function
+        //! \note 在tick计数达到规定的次数，需要在user process中调用handler，不是上面的在内核调用该函数！
+        //! \note 因此解决方案是修改PC寄存器
+        if (!p->in_handler) {
+          //! \note 不能重复调用handler指的是：在同一进程中，如果在handler执行时ticks_count又达到了规定次数
+          //! \note 此时不能再重复调用handler，因为目前该进程的handler并没有返回， 
+          
+          p->in_handler = 1;
+          *p->trapframe_backup = *p->trapframe; // 调用handler之前备份当前进程的各种寄存器以备使用 
+          p->trapframe->epc = p->handler;
+        }
+      }
+    }
     yield();
+  }
 
   usertrapret();
 }

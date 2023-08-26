@@ -120,12 +120,26 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
+  //初始化与sigalarm有关的变量
+  p->handler = 0;
+  p->alarm_interval = 0;
+  p->ticks_count = 0;
+  p->has_handler = 0;
+  p->in_handler = 0;
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
     release(&p->lock);
     return 0;
   }
+
+  // Allocate a trapframe_backup page
+  if((p->trapframe_backup = (struct trapframe *)kalloc()) == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }  
 
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
@@ -152,6 +166,9 @@ freeproc(struct proc *p)
 {
   if(p->trapframe)
     kfree((void*)p->trapframe);
+  //! \bug 注意分配了trapframe_backup一定要释放该page，否则会报错
+  if(p->trapframe_backup)
+    kfree((void*)p->trapframe_backup);
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
