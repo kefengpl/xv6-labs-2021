@@ -129,11 +129,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-<<<<<<< HEAD
 [SYS_sigalarm] sys_sigalarm, 
-=======
-[SYS_sigalarm] sys_sigalarm,
->>>>>>> 2badc23d7ebd4f43062cce51b62ed204d9746f59
 [SYS_sigreturn] sys_sigreturn,
 };
 

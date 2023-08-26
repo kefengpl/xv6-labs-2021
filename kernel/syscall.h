@@ -21,8 +21,4 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_sigalarm 22
-<<<<<<< HEAD
 #define SYS_sigreturn 23
-=======
-#define SYS_sigreturn 23
->>>>>>> 2badc23d7ebd4f43062cce51b62ed204d9746f59

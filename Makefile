@@ -407,8 +407,4 @@ myapi.key:
 	fi;
 
 
-<<<<<<< HEAD
 .PHONY: handin tarball tarball-pref clean grade handin-check
-=======
-.PHONY: handin tarball tarball-pref clean grade handin-check
->>>>>>> 2badc23d7ebd4f43062cce51b62ed204d9746f59

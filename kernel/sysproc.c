@@ -57,7 +57,6 @@ sys_sleep(void)
 {
   int n;
   uint ticks0;
-  printf("hahah\n");
   backtrace();
 
   if(argint(0, &n) < 0)
@@ -71,7 +70,6 @@ sys_sleep(void)
     }
     sleep(&ticks, &tickslock);
   }
-  backtrace();
   release(&tickslock);
   return 0;
 }
